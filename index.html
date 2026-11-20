@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Slovakia CSD 2022 Traffic Intensity Explorer</title>
+<title>Slovakia CSD 2022/2023 Traffic Intensity Explorer</title>
 
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
@@ -259,11 +259,103 @@ body.embed .app{height:calc(100vh - 48px)}
   .mobile-stats-sheet b{font-size:14px}
 }
 
+
+.week-chart{
+  margin-top:10px;
+  padding-top:9px;
+  border-top:1px solid var(--border);
+}
+.week-chart-head{
+  display:flex;
+  align-items:baseline;
+  justify-content:space-between;
+  gap:8px;
+  margin-bottom:7px;
+}
+.week-chart-title{
+  font-size:12px;
+  font-weight:700;
+  color:var(--text);
+}
+.week-chart-mode{
+  font-size:10px;
+  color:var(--muted);
+  white-space:nowrap;
+}
+.week-bars{
+  display:grid;
+  grid-template-columns:repeat(7,minmax(0,1fr));
+  gap:4px;
+  align-items:end;
+  height:105px;
+}
+.week-bar-item{
+  height:100%;
+  min-width:0;
+  display:flex;
+  flex-direction:column;
+  justify-content:flex-end;
+  align-items:center;
+  text-align:center;
+}
+.week-value{
+  font-size:9px;
+  line-height:1;
+  margin-bottom:3px;
+  color:var(--muted);
+  white-space:nowrap;
+}
+.week-bar{
+  width:100%;
+  max-width:22px;
+  min-height:3px;
+  border-radius:4px 4px 0 0;
+  background:#9aa8b5;
+  opacity:.78;
+}
+.week-bar.selected{
+  background:#1f6feb;
+  opacity:1;
+}
+.week-label{
+  font-size:9px;
+  line-height:1;
+  margin-top:4px;
+  color:var(--muted);
+}
+.week-note{
+  margin-top:6px;
+  font-size:9px;
+  line-height:1.35;
+  color:var(--muted);
+}
+@media(max-width:768px){
+  .mobile-stats-sheet{
+    max-height:55vh;
+  }
+  .week-bars{height:120px;gap:5px}
+  .week-bar{max-width:26px}
+  .week-value,.week-label{font-size:10px}
+  .week-chart-title{font-size:13px}
+  .week-chart-mode{font-size:10px}
+}
+
+
+.leaflet-tooltip{
+  max-width:360px;
+  white-space:normal;
+}
+@media(min-width:769px){
+  .leaflet-tooltip{
+    width:340px;
+  }
+}
+
 </style>
 </head>
 <body>
 <header>
-  <div><h1>Slovakia road traffic — CSD 2022</h1>
+  <div><h1>Slovakia road traffic — CSD 2022/2023</h1>
   <div class="sub">Class I, II and III roads • RPDI + modelled weekday estimates • truck toggle</div></div>
   <button id="controlsToggle" class="header-toggle" type="button">Filters</button>
 </header>
@@ -317,7 +409,7 @@ body.embed .app{height:calc(100vh - 48px)}
 <h2>Methodology</h2>
 <div class="small">
 <b>RPDI</b> shown here is the combined traffic for both available directions of each counting section. The source directional records are grouped by road + <b>cisloSU</b> and their <b>s/t/o/m</b> values are summed. For Monday–Sunday the dashboard calculates an <b>estimated weekday intensity</b> by multiplying non-truck and truck RPDI separately by SSC weekly-variation factors. These weekday values are therefore modelled, not direct daily observations for every road section.<br><br>
-The 2022/2023 census covered all class I and II roads but only <b>part of class III</b>. Sections explicitly identified by the source as 2023 measurements are excluded where a year/note field permits that identification.<br><br>
+The official <b>CSD 2022/2023</b> publication combines measurements carried out during 2022 and 2023. The census covered all class I and II roads but only <b>part of class III</b>. This visualization uses all published records from that combined dataset.<br><br>
 Weekday coefficients in this viewer are digitised approximations from the SSC 2020 weekly-variation charts presented by Dolinayová (2023); therefore use weekday values as comparative estimates rather than engineering-design inputs.
 </div>
 </div>
@@ -363,7 +455,7 @@ function sectionStatsHtml(f){
     RPDI total (both directions): ${Number.isFinite(S)?Math.round(S).toLocaleString():'—'} veh/day<br>
     Trucks RPDI: ${Number.isFinite(T)?Math.round(T).toLocaleString():'—'}${Number.isFinite(S)&&S>0&&Number.isFinite(T)?' ('+(100*T/S).toFixed(1)+'%)':''}<br>
     ${p.__directionCount?'Directions combined: '+p.__directionCount+(p.__directions?.length?' ('+p.__directions.join(', ')+')':'')+'<br>':''}
-    <b>${dayLabel}: ${Math.round(selected).toLocaleString()} veh/day</b>`;
+    <b>${dayLabel}: ${Math.round(selected).toLocaleString()} veh/day</b>${weekChartHtml(f)}`;
 }
 
 function showMobileStats(f){
@@ -385,7 +477,7 @@ let baseLayer=null;
 try{
   baseLayer=L.tileLayer(
     'https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}',
-    {maxZoom:18, attribution:'Tiles &copy; Esri'}
+    {maxZoom:18, attribution:'Tiles &copy; Esri | Traffic data: SSC CSD 2022/2023'}
   ).addTo(map);
   baseLayer.on('tileerror',()=>{
     if(baseLayer && map.hasLayer(baseLayer)) map.removeLayer(baseLayer);
@@ -458,17 +550,10 @@ function roadClass(p){
  return null;
 }
 
-function is2022(p){
- if(meta.year){
-   const y=String(p[meta.year]??'').match(/20\d{2}/);
-   if(y)return y[0]==='2022';
- }
- if(meta.note){
-   const s=norm(p[meta.note]);
-   if(s.includes('2023'))return false;
-   if(s.includes('2022'))return true;
- }
- // If the layer has no usable year marker, retain it and disclose that filtering is not verifiable.
+function includeCSDRecord(p){
+ // The official SSC SHP is the combined CSD 2022/2023 publication.
+ // Keep all published records in the dataset, regardless of whether
+ // the underlying measurement was performed in 2022 or 2023.
  return true;
 }
 
@@ -490,6 +575,65 @@ function val(f){
  const tf=prof==='AVG'?(truck.H[i]+truck.Z[i]+truck.R[i])/3:truck[prof][i];
  return Math.max(0, non*pf + (includeT?t*tf:0));
 }
+
+function weekdayTrafficValues(f){
+ const p=f.properties||{};
+ const S=numeric(p[meta.total]);
+ const T=numeric(p[meta.trucks]);
+ const O=numeric(p[meta.cars]);
+ const M=numeric(p[meta.moto]);
+
+ let total=Number.isFinite(S)?S:([T,O,M].filter(Number.isFinite).reduce((a,b)=>a+b,0));
+ let t=Number.isFinite(T)?T:0;
+ let non=Math.max(0,total-t);
+ const includeT=document.getElementById('includeTrucks').checked;
+
+ const cls=roadClass(p);
+ const profileSel=document.getElementById('profile').value;
+ const prof=cls==='I'?'I':profileSel;
+
+ const days=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+ return days.map((d,i)=>{
+   const pf=prof==='AVG'?(pass.H[i]+pass.Z[i]+pass.R[i])/3:pass[prof][i];
+   const tf=prof==='AVG'?(truck.H[i]+truck.Z[i]+truck.R[i])/3:truck[prof][i];
+   return Math.max(0, non*pf + (includeT?t*tf:0));
+ });
+}
+
+function compactTraffic(v){
+ if(!Number.isFinite(v)) return '—';
+ if(v>=1000000) return (v/1000000).toFixed(v>=10000000?0:1)+'m';
+ if(v>=1000) return (v/1000).toFixed(v>=10000?1:1)+'k';
+ return Math.round(v).toString();
+}
+
+function weekChartHtml(f){
+ const vals=weekdayTrafficValues(f);
+ const max=Math.max(...vals,1);
+ const selectedDay=document.getElementById('weekday').value;
+ const labels=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+ const includeT=document.getElementById('includeTrucks').checked;
+
+ const bars=vals.map((v,i)=>{
+   const h=Math.max(4,Math.round((v/max)*76));
+   const sel=selectedDay===labels[i]?' selected':'';
+   return `<div class="week-bar-item">
+     <div class="week-value">${compactTraffic(v)}</div>
+     <div class="week-bar${sel}" style="height:${h}px"></div>
+     <div class="week-label">${labels[i]}</div>
+   </div>`;
+ }).join('');
+
+ return `<div class="week-chart">
+   <div class="week-chart-head">
+     <div class="week-chart-title">Estimated traffic by weekday</div>
+     <div class="week-chart-mode">${includeT?'incl. trucks':'excl. trucks'}</div>
+   </div>
+   <div class="week-bars">${bars}</div>
+   <div class="week-note">Estimated from SSC weekly traffic-variation factors.</div>
+ </div>`;
+}
+
 
 function color(t){
  // blue -> cyan -> yellow -> orange -> red, t 0..1
@@ -545,7 +689,7 @@ function aggregateDirections(features){
 
 function selectedFeatures(){
  const classes=[...document.querySelectorAll('.roadClass:checked')].map(x=>x.value);
- return mapFeatures.filter(f=>classes.includes(roadClass(f.properties||{})) && is2022(f.properties||{}));
+ return mapFeatures.filter(f=>classes.includes(roadClass(f.properties||{})) && includeCSDRecord(f.properties||{}));
 }
 
 function render(){
@@ -631,9 +775,7 @@ async function consume(input){
  }
  mapFeatures=aggregateDirections(rawFeatures);
  const rc=mapFeatures.reduce((a,f)=>{const c=roadClass(f.properties||{});if(c)a[c]=(a[c]||0)+1;return a},{});
- const yearMsg=meta.year||meta.note
-   ? '2023-marked records will be excluded using <b>'+(meta.year||meta.note)+'</b>.'
-   : '<b>No explicit year/note field was detected</b>; all class I–III records will remain visible because source-year filtering cannot be verified from the attributes.';
+ const yearMsg='Using the official combined <b>CSD 2022/2023</b> publication. All published class I–III records are retained.';
  setStatus(`Loaded <b>${rawFeatures.length.toLocaleString()}</b> source records and aggregated them to <b>${mapFeatures.length.toLocaleString()}</b> counting sections${meta.direction?' using '+meta.direction:''}. Detected fields: road=<b>${meta.road}</b>, class=<b>${meta.roadClassField||'derived'}</b>, total=<b>${meta.total}</b>, trucks=<b>${meta.trucks}</b>. Classes after aggregation: I=<b>${(rc.I||0).toLocaleString()}</b>, II=<b>${(rc.II||0).toLocaleString()}</b>, III=<b>${(rc.III||0).toLocaleString()}</b>. ${yearMsg}`,'ok');
  render();
  if(layer && layer.getBounds && layer.getBounds().isValid()){
@@ -652,7 +794,7 @@ document.querySelectorAll('.roadClass,#weekday,#includeTrucks,#profile').forEach
 async function loadBundledData(){
  try{
    setStatus('Loading SSC traffic data…');
-   const dataUrl = ZIP_URL + '?v=7';
+   const dataUrl = ZIP_URL + '?v=10';
    const r = await fetch(dataUrl, {cache:'no-store'});
    if(!r.ok) throw new Error('ZIP request failed: HTTP '+r.status+' at '+dataUrl);
 
