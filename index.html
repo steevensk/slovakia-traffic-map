@@ -7,37 +7,7 @@
 
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
- integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin="">
-async function loadBundledData(){
- try{
-   setStatus('Loading SSC traffic data…');
-   const r=await fetch(ZIP_URL,{cache:'force-cache'});
-   if(!r.ok) throw new Error('HTTP '+r.status);
-   await consume(await r.arrayBuffer());
- }catch(e){
-   setStatus(
-     '<b>Traffic data could not be loaded.</b><br>'+
-     'This page expects <code>shp_su_intenzity.zip</code> in the same folder as <code>index.html</code>. '+
-     'Check that both files were uploaded and that the filename is unchanged.<br><small>'+String(e.message||e)+'</small>',
-     'err'
-   );
- }
-}
-
-const toggle=document.getElementById('controlsToggle');
-const aside=document.querySelector('aside');
-if(toggle && aside){
- toggle.addEventListener('click',()=>aside.classList.toggle('open'));
- map.on('click',()=>aside.classList.remove('open'));
-}
-
-window.addEventListener('load',()=>{
- document.body.classList.add('embed');
- setTimeout(()=>map.invalidateSize(),100);
- loadBundledData();
-});
-
-</script>
+ integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 <script src="https://cdn.jsdelivr.net/npm/shpjs@latest/dist/shp.js"></script>
 
 <style>
@@ -228,11 +198,9 @@ body.embed .app{height:calc(100vh - 48px)}
 </header>
 <div class="app">
 <aside>
-
 <div class="card compact-status">
   <div id="status" class="status">Loading SSC traffic data…</div>
 </div>
-
 
 
 
@@ -559,6 +527,44 @@ async function consume(input){
 
 
 document.querySelectorAll('.roadClass,#weekday,#includeTrucks,#profile').forEach(x=>x.addEventListener('change',render));
+
+async function loadBundledData(){
+ try{
+   setStatus('Loading SSC traffic data…');
+   const dataUrl = ZIP_URL + '?v=6';
+   const r = await fetch(dataUrl, {cache:'no-store'});
+   if(!r.ok) throw new Error('ZIP request failed: HTTP '+r.status+' at '+dataUrl);
+
+   const buf = await r.arrayBuffer();
+   if(!buf || buf.byteLength < 1000)
+     throw new Error('ZIP file response is unexpectedly small ('+(buf ? buf.byteLength : 0)+' bytes).');
+
+   setStatus('Traffic data downloaded ('+(buf.byteLength/1024/1024).toFixed(1)+' MB). Parsing…');
+   await consume(buf);
+ }catch(e){
+   console.error('Traffic data load failed:', e);
+   setStatus(
+     '<b>Traffic data could not be loaded.</b><br>'+
+     'Expected file: <code>shp_su_intenzity.zip</code> in the same repository folder as <code>index.html</code>.<br>'+
+     '<b>Error:</b> '+String(e && e.message ? e.message : e),
+     'err'
+   );
+ }
+}
+
+const controlsToggle = document.getElementById('controlsToggle');
+const controlsAside = document.querySelector('aside');
+if(controlsToggle && controlsAside){
+ controlsToggle.addEventListener('click',()=>controlsAside.classList.toggle('open'));
+ map.on('click',()=>controlsAside.classList.remove('open'));
+}
+
+window.addEventListener('load',()=>{
+ document.body.classList.add('embed');
+ setTimeout(()=>map.invalidateSize(),100);
+ loadBundledData();
+});
+
 </script>
 </body>
 </html>
