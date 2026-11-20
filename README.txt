@@ -1,26 +1,18 @@
-Blogger/GitHub Pages traffic map — v6
+Traffic map v7 — mobile improvements
 
-Upload these files to the ROOT of your GitHub repository:
-  index.html
-  shp_su_intenzity.zip
+Changes:
+- responsive mobile map height using 100dvh
+- smaller mobile header / legend
+- larger Leaflet zoom controls on mobile
+- invisible ~20 px touch targets around road sections
+- mobile bottom-sheet statistics panel
+- desktop tooltip behavior retained
+- tap map background or X to close mobile stats
 
-IMPORTANT:
-- Keep the data filename exactly: shp_su_intenzity.zip
-- Replace the existing index.html in the repository with this v6 file.
-- GitHub Pages URL:
-  https://steevensk.github.io/slovakia-traffic-map/
+Deployment:
+Replace index.html in your GitHub repository root.
+Keep shp_su_intenzity.zip unchanged in the same folder.
+Then hard-refresh the GitHub Pages site.
 
-If GitHub Pages shows an older cached version, hard-refresh with Ctrl+F5.
-
-Blogger iframe:
-<div style="width:100%;height:900px;max-width:100%;overflow:hidden;">
-  <iframe
-    src="https://steevensk.github.io/slovakia-traffic-map/"
-    title="Slovakia road traffic intensity 2022"
-    width="100%"
-    height="900"
-    style="border:0;display:block;"
-    loading="lazy"
-    allowfullscreen>
-  </iframe>
-</div>
+GitHub Pages:
+https://steevensk.github.io/slovakia-traffic-map/

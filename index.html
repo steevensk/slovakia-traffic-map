@@ -188,6 +188,77 @@ body.embed .app{height:calc(100vh - 48px)}
   #map{height:100%}
 }
 
+
+/* Mobile map refinements */
+.mobile-stats-sheet{
+  display:none;
+}
+@media(max-width:768px){
+  body.embed header{padding:7px 10px}
+  body.embed header h1{font-size:14px;line-height:1.2}
+  body.embed header .sub{font-size:10px}
+  body.embed .app{height:calc(100dvh - 46px)}
+  .app > div:last-child{height:100%}
+  #map{height:100%}
+
+  .leaflet-control-zoom a{
+    width:38px;
+    height:38px;
+    line-height:38px;
+    font-size:22px;
+  }
+
+  .legend{
+    right:8px;
+    bottom:8px;
+    padding:7px 8px;
+    font-size:10px;
+    max-width:190px;
+  }
+  .legend .bar{width:145px}
+
+  .mobile-stats-sheet{
+    display:block;
+    position:absolute;
+    z-index:1200;
+    left:50%;
+    bottom:10px;
+    transform:translate(-50%, calc(100% + 30px));
+    width:min(94%, 430px);
+    max-height:38vh;
+    overflow:auto;
+    background:#fff;
+    border:1px solid #cfd8e3;
+    border-radius:14px;
+    box-shadow:0 6px 24px rgba(0,0,0,.25);
+    padding:14px 42px 14px 14px;
+    font-size:13px;
+    line-height:1.45;
+    transition:transform .18s ease;
+    pointer-events:none;
+  }
+  .mobile-stats-sheet.open{
+    transform:translate(-50%, 0);
+    pointer-events:auto;
+  }
+  .mobile-stats-close{
+    position:absolute;
+    top:6px;
+    right:8px;
+    width:34px;
+    height:34px;
+    border:0;
+    border-radius:50%;
+    background:#eef2f6;
+    color:#18212b;
+    font-size:22px;
+    line-height:30px;
+    padding:0;
+    cursor:pointer;
+  }
+  .mobile-stats-sheet b{font-size:14px}
+}
+
 </style>
 </head>
 <body>
@@ -251,7 +322,13 @@ Weekday coefficients in this viewer are digitised approximations from the SSC 20
 </div>
 </div>
 </aside>
-<div style="position:relative"><div id="map"></div><div class="legend"><b>Selected traffic intensity</b><div class="bar"></div><div><span id="legMin">low</span><span style="float:right" id="legMax">high</span></div></div></div>
+<div style="position:relative">
+  <div id="map"></div>
+  <div id="mobileStatsSheet" class="mobile-stats-sheet" aria-live="polite">
+    <button id="mobileStatsClose" class="mobile-stats-close" type="button" aria-label="Close">×</button>
+    <div id="mobileStatsContent"></div>
+  </div>
+  <div class="legend"><b>Selected traffic intensity</b><div class="bar"></div><div><span id="legMin">low</span><span style="float:right" id="legMax">high</span></div></div></div>
 </div>
 
 <script>
@@ -271,6 +348,35 @@ const truck = {
  R:[1.19,1.16,1.19,1.14,1.23,.65,.43]
 };
 const dayIndex={Mon:0,Tue:1,Wed:2,Thu:3,Fri:4,Sat:5,Sun:6};
+
+const isMobile = () => window.matchMedia('(max-width:768px)').matches;
+
+function sectionStatsHtml(f){
+  const p=f.properties||{}, S=numeric(p[meta.total]), T=numeric(p[meta.trucks]);
+  const selected=val(f), cls=roadClass(p);
+  const day=document.getElementById('weekday').value;
+  const dayLabel=day==='RPDI'?'RPDI':'Estimated '+document.getElementById('weekday').selectedOptions[0].text;
+  return `<b>${meta.road?String(p[meta.road]??'Road'):'Road'}${cls?' · class '+cls:''}</b><br>
+    ${meta.section?'Section: '+String(p[meta.section]??'—')+'<br>':''}
+    ${meta.region?'Region: '+String(p[meta.region]??'—')+'<br>':''}
+    ${meta.district?'District: '+String(p[meta.district]??'—')+'<br>':''}
+    RPDI total (both directions): ${Number.isFinite(S)?Math.round(S).toLocaleString():'—'} veh/day<br>
+    Trucks RPDI: ${Number.isFinite(T)?Math.round(T).toLocaleString():'—'}${Number.isFinite(S)&&S>0&&Number.isFinite(T)?' ('+(100*T/S).toFixed(1)+'%)':''}<br>
+    ${p.__directionCount?'Directions combined: '+p.__directionCount+(p.__directions?.length?' ('+p.__directions.join(', ')+')':'')+'<br>':''}
+    <b>${dayLabel}: ${Math.round(selected).toLocaleString()} veh/day</b>`;
+}
+
+function showMobileStats(f){
+  const sheet=document.getElementById('mobileStatsSheet');
+  const content=document.getElementById('mobileStatsContent');
+  if(!sheet||!content)return;
+  content.innerHTML=sectionStatsHtml(f);
+  sheet.classList.add('open');
+}
+function hideMobileStats(){
+  document.getElementById('mobileStatsSheet')?.classList.remove('open');
+}
+
 
 const map=L.map('map',{preferCanvas:true}).setView([48.72,19.55],8);
 map.getContainer().style.background='#eef2f5';
@@ -294,7 +400,7 @@ try{
 }catch(e){
   baseLayer=null;
 }
-let rawFeatures=[], mapFeatures=[], layer=null, haloLayer=null, meta={};
+let rawFeatures=[], mapFeatures=[], layer=null, haloLayer=null, hitLayer=null, meta={};
 const trafficRenderer=L.canvas({padding:0.5});
 const haloRenderer=L.canvas({padding:0.5});
 
@@ -446,6 +552,7 @@ function render(){
  if(!rawFeatures.length)return;
  if(layer)layer.remove();
  if(haloLayer)haloLayer.remove();
+ if(hitLayer)hitLayer.remove();
  const fs=selectedFeatures(), values=fs.map(val).filter(Number.isFinite);
  const positive=values.filter(x=>x>0);
  const min=positive.length?Math.min(...positive):0, max=positive.length?Math.max(...positive):1;
@@ -468,17 +575,31 @@ function render(){
      return {color:color(t),weight:2.5+4.5*Math.max(0,Math.min(1,t)),opacity:.95,lineCap:'round',lineJoin:'round'};
    },
    onEachFeature:(f,l)=>{
-     const p=f.properties||{}, S=numeric(p[meta.total]), T=numeric(p[meta.trucks]);
-     const selected=val(f), cls=roadClass(p);
-     const day=document.getElementById('weekday').value;
-     const dayLabel=day==='RPDI'?'RPDI':'Estimated '+document.getElementById('weekday').selectedOptions[0].text;
-     l.bindTooltip(`<b>${meta.road?String(p[meta.road]??'Road'):'Road'}${cls?' · class '+cls:''}</b><br>
-       ${meta.section?'Section: '+String(p[meta.section]??'—')+'<br>':''}
-       ${meta.region?'Region: '+String(p[meta.region]??'—')+'<br>':''}${meta.district?'District: '+String(p[meta.district]??'—')+'<br>':''}
-       RPDI total (both directions): ${Number.isFinite(S)?Math.round(S).toLocaleString():'—'} veh/day<br>
-       Trucks RPDI: ${Number.isFinite(T)?Math.round(T).toLocaleString():'—'}${Number.isFinite(S)&&S>0&&Number.isFinite(T)?' ('+(100*T/S).toFixed(1)+'%)':''}<br>
-       ${p.__directionCount?'Directions combined: '+p.__directionCount+(p.__directions?.length?' ('+p.__directions.join(', ')+')':'')+'<br>':''}
-       <b>${dayLabel}: ${Math.round(selected).toLocaleString()} veh/day</b>`);
+     l.bindTooltip(sectionStatsHtml(f),{sticky:true,opacity:0.96});
+     l.on('click',e=>{
+       if(isMobile()){
+         L.DomEvent.stopPropagation(e);
+         showMobileStats(f);
+       }
+     });
+   }
+ }).addTo(map);
+
+ // Invisible wide interaction layer. On mobile this makes road sections much
+ // easier to tap without changing their visible thickness.
+ hitLayer=L.geoJSON(fc,{
+   renderer: trafficRenderer,
+   style:()=>({color:'#000000',weight:isMobile()?20:8,opacity:0.001}),
+   onEachFeature:(f,l)=>{
+     l.on('click',e=>{
+       if(isMobile()){
+         L.DomEvent.stopPropagation(e);
+         showMobileStats(f);
+       }
+     });
+     if(!isMobile()){
+       l.bindTooltip(sectionStatsHtml(f),{sticky:true,opacity:0.96});
+     }
    }
  }).addTo(map);
 
@@ -531,7 +652,7 @@ document.querySelectorAll('.roadClass,#weekday,#includeTrucks,#profile').forEach
 async function loadBundledData(){
  try{
    setStatus('Loading SSC traffic data…');
-   const dataUrl = ZIP_URL + '?v=6';
+   const dataUrl = ZIP_URL + '?v=7';
    const r = await fetch(dataUrl, {cache:'no-store'});
    if(!r.ok) throw new Error('ZIP request failed: HTTP '+r.status+' at '+dataUrl);
 
@@ -561,8 +682,21 @@ if(controlsToggle && controlsAside){
 
 window.addEventListener('load',()=>{
  document.body.classList.add('embed');
- setTimeout(()=>map.invalidateSize(),100);
+ setTimeout(()=>{map.invalidateSize(); if(isMobile() && map.getZoom()>7) map.setZoom(7);},100);
  loadBundledData();
+});
+
+
+map.on('click',()=>{
+  if(isMobile()) hideMobileStats();
+});
+document.getElementById('mobileStatsClose')?.addEventListener('click',e=>{
+  e.stopPropagation();
+  hideMobileStats();
+});
+window.addEventListener('resize',()=>{
+  setTimeout(()=>map.invalidateSize(),100);
+  if(!isMobile()) hideMobileStats();
 });
 
 </script>
