@@ -1,0 +1,564 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Slovakia CSD 2022 Traffic Intensity Explorer</title>
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+ integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin="">
+async function loadBundledData(){
+ try{
+   setStatus('Loading SSC traffic data…');
+   const r=await fetch(ZIP_URL,{cache:'force-cache'});
+   if(!r.ok) throw new Error('HTTP '+r.status);
+   await consume(await r.arrayBuffer());
+ }catch(e){
+   setStatus(
+     '<b>Traffic data could not be loaded.</b><br>'+
+     'This page expects <code>shp_su_intenzity.zip</code> in the same folder as <code>index.html</code>. '+
+     'Check that both files were uploaded and that the filename is unchanged.<br><small>'+String(e.message||e)+'</small>',
+     'err'
+   );
+ }
+}
+
+const toggle=document.getElementById('controlsToggle');
+const aside=document.querySelector('aside');
+if(toggle && aside){
+ toggle.addEventListener('click',()=>aside.classList.toggle('open'));
+ map.on('click',()=>aside.classList.remove('open'));
+}
+
+window.addEventListener('load',()=>{
+ document.body.classList.add('embed');
+ setTimeout(()=>map.invalidateSize(),100);
+ loadBundledData();
+});
+
+</script>
+<script src="https://cdn.jsdelivr.net/npm/shpjs@latest/dist/shp.js"></script>
+
+<style>
+:root{--bg:#f5f7fa;--card:#fff;--text:#17202a;--muted:#637083;--border:#d9e0e7;--accent:#1f6feb}
+*{box-sizing:border-box} html,body{height:100%;margin:0;} body{font-family:Inter,Segoe UI,Arial,sans-serif;color:var(--text);background:var(--bg)}
+header{padding:14px 18px;background:#17202a;color:#fff;display:flex;gap:16px;align-items:center;justify-content:space-between}
+header h1{font-size:18px;margin:0} header .sub{font-size:12px;opacity:.8}
+.app{display:grid;grid-template-columns:330px 1fr;height:calc(100vh - 58px)}
+aside{padding:14px;overflow:auto;border-right:1px solid var(--border);background:var(--card)}
+#map{height:100%;width:100%;background:#dde5ec}
+.card{border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:12px;background:#fff}
+.card h2{font-size:14px;margin:0 0 10px}.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+label{font-size:12px;color:var(--muted);display:block;margin:9px 0 4px}
+select,button,input[type=file]{width:100%;padding:8px;border:1px solid #cbd5df;border-radius:7px;background:#fff;font:inherit}
+button{cursor:pointer;background:var(--accent);color:#fff;border:0;font-weight:600}
+button.secondary{background:#eef3f8;color:#213547;border:1px solid #cbd5df}
+.checks label{display:flex;align-items:center;gap:6px;margin:6px 0;color:var(--text)}
+.small{font-size:11px;color:var(--muted);line-height:1.45}
+.statgrid{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+.stat{background:#f7f9fb;padding:8px;border-radius:7px}.stat b{display:block;font-size:17px}.stat span{font-size:10px;color:var(--muted)}
+.status{font-size:12px;line-height:1.45;padding:8px;border-radius:7px;background:#f3f6f9}
+.warn{background:#fff5d6}.ok{background:#e9f7ef}.err{background:#fdecec}
+.legend{position:absolute;right:18px;bottom:24px;z-index:1000;background:white;border:1px solid #ccd6df;border-radius:8px;padding:9px 10px;font-size:11px;box-shadow:0 1px 6px #0002}
+.legend .bar{height:9px;width:180px;border-radius:5px;background:linear-gradient(90deg,#2c7bb6,#abd9e9,#ffffbf,#fdae61,#d7191c);margin:4px 0}
+a{color:#1f6feb}
+@media(max-width:800px){.app{grid-template-columns:1fr;grid-template-rows:auto 65vh;height:auto}aside{border-right:0;border-bottom:1px solid var(--border)}}
+
+/* Critical Leaflet layout CSS embedded locally for reliable file:// rendering */
+.leaflet-pane,
+.leaflet-tile,
+.leaflet-marker-icon,
+.leaflet-marker-shadow,
+.leaflet-tile-container,
+.leaflet-pane > svg,
+.leaflet-pane > canvas,
+.leaflet-zoom-box,
+.leaflet-image-layer,
+.leaflet-layer {
+  position: absolute;
+  left: 0;
+  top: 0;
+}
+.leaflet-container {
+  overflow: hidden;
+  -webkit-tap-highlight-color: transparent;
+  background: #dfe7ee;
+  outline-offset: 1px;
+}
+.leaflet-tile,
+.leaflet-marker-icon,
+.leaflet-marker-shadow {
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+.leaflet-tile {
+  visibility: hidden;
+}
+.leaflet-tile-loaded {
+  visibility: inherit;
+}
+.leaflet-zoom-animated {
+  transform-origin: 0 0;
+}
+.leaflet-zoom-anim .leaflet-zoom-animated {
+  transition: transform 0.25s cubic-bezier(0,0,0.25,1);
+}
+.leaflet-zoom-anim .leaflet-tile,
+.leaflet-pan-anim .leaflet-tile {
+  transition: none;
+}
+.leaflet-container .leaflet-overlay-pane svg {
+  max-width: none !important;
+  max-height: none !important;
+}
+.leaflet-container .leaflet-marker-pane img,
+.leaflet-container .leaflet-shadow-pane img,
+.leaflet-container .leaflet-tile-pane img,
+.leaflet-container img.leaflet-image-layer,
+.leaflet-container .leaflet-tile {
+  max-width: none !important;
+  max-height: none !important;
+  width: 256px;
+  height: 256px;
+  padding: 0;
+  margin: 0;
+}
+.leaflet-container.leaflet-touch-zoom {
+  touch-action: pan-x pan-y;
+}
+.leaflet-container.leaflet-touch-drag {
+  touch-action: none;
+  touch-action: pinch-zoom;
+}
+.leaflet-container.leaflet-touch-drag.leaflet-touch-zoom {
+  touch-action: none;
+}
+.leaflet-tile-container {
+  pointer-events: none;
+}
+.leaflet-control {
+  position: relative;
+  z-index: 800;
+  pointer-events: auto;
+}
+.leaflet-top,
+.leaflet-bottom {
+  position: absolute;
+  z-index: 1000;
+  pointer-events: none;
+}
+.leaflet-top { top: 0; }
+.leaflet-right { right: 0; }
+.leaflet-bottom { bottom: 0; }
+.leaflet-left { left: 0; }
+.leaflet-control-zoom a {
+  display: block;
+  text-align: center;
+  text-decoration: none;
+  background: white;
+  color: #222;
+  width: 30px;
+  height: 30px;
+  line-height: 30px;
+  border-bottom: 1px solid #ccc;
+}
+.leaflet-control-zoom {
+  margin-left: 10px;
+  margin-top: 10px;
+  box-shadow: 0 1px 5px rgba(0,0,0,.35);
+  border-radius: 4px;
+  overflow: hidden;
+}
+.leaflet-control-attribution {
+  background: rgba(255,255,255,.82);
+  padding: 2px 6px;
+  font-size: 10px;
+}
+.leaflet-tooltip {
+  position: absolute;
+  padding: 7px 9px;
+  background: white;
+  border: 1px solid #bbb;
+  border-radius: 4px;
+  color: #222;
+  white-space: nowrap;
+  box-shadow: 0 1px 5px rgba(0,0,0,.2);
+  pointer-events: none;
+  z-index: 650;
+}
+.leaflet-tooltip-pane { z-index: 650; }
+.leaflet-overlay-pane { z-index: 400; }
+.leaflet-tile-pane { z-index: 200; }
+.leaflet-map-pane { position: absolute; left: 0; top: 0; }
+
+
+.header-toggle{
+  display:none;width:auto;padding:7px 12px;border-radius:7px;background:#fff;color:#17202a;
+  font-size:12px;font-weight:700;border:0;
+}
+.compact-status{padding:8px}
+.compact-status .status{margin:0}
+body.embed header{padding:9px 14px}
+body.embed header h1{font-size:16px}
+body.embed .app{height:calc(100vh - 48px)}
+@media(max-width:800px){
+  header{position:sticky;top:0;z-index:1200}
+  .header-toggle{display:block}
+  .app{display:block;height:calc(100vh - 54px)}
+  aside{
+    position:absolute;z-index:1100;left:0;top:54px;bottom:0;width:min(330px,90vw);
+    transform:translateX(-103%);transition:transform .2s ease;
+    box-shadow:3px 0 14px rgba(0,0,0,.18);border-right:1px solid var(--border);
+  }
+  aside.open{transform:translateX(0)}
+  .app > div:last-child{height:100%}
+  #map{height:100%}
+}
+
+</style>
+</head>
+<body>
+<header>
+  <div><h1>Slovakia road traffic — CSD 2022</h1>
+  <div class="sub">Class I, II and III roads • RPDI + modelled weekday estimates • truck toggle</div></div>
+  <button id="controlsToggle" class="header-toggle" type="button">Filters</button>
+</header>
+<div class="app">
+<aside>
+
+<div class="card compact-status">
+  <div id="status" class="status">Loading SSC traffic data…</div>
+</div>
+
+
+
+
+<div class="card">
+<h2>Filters</h2>
+<label>Road category</label>
+<div class="checks">
+<label><input type="checkbox" class="roadClass" value="I" checked> Class I</label>
+<label><input type="checkbox" class="roadClass" value="II" checked> Class II</label>
+<label><input type="checkbox" class="roadClass" value="III" checked> Class III</label>
+</div>
+
+<label>Day</label>
+<select id="weekday">
+<option value="RPDI">RPDI — annual average day</option>
+<option value="Mon">Monday</option><option value="Tue">Tuesday</option><option value="Wed">Wednesday</option>
+<option value="Thu">Thursday</option><option value="Fri">Friday</option><option value="Sat">Saturday</option><option value="Sun">Sunday</option>
+</select>
+
+<div class="checks">
+<label><input id="includeTrucks" type="checkbox" checked> Include trucks</label>
+</div>
+
+<label>Class II/III weekday profile</label>
+<select id="profile">
+<option value="AVG">Average of H / Z / R</option>
+<option value="H">H</option><option value="Z">Z</option><option value="R">R</option>
+</select>
+<div class="small">SSC weekday factors distinguish II/III traffic-character profiles H, Z and R. The map cannot safely infer that profile from the published RPDI layer, so you can choose it explicitly.</div>
+</div>
+
+<div class="card">
+<h2>Visible-data summary</h2>
+<div class="statgrid">
+<div class="stat"><b id="nSections">—</b><span>sections</span></div>
+<div class="stat"><b id="avgTraffic">—</b><span>avg veh/day</span></div>
+<div class="stat"><b id="maxTraffic">—</b><span>max veh/day</span></div>
+<div class="stat"><b id="truckShare">—</b><span>truck share</span></div>
+</div>
+</div>
+
+<div class="card">
+<h2>Methodology</h2>
+<div class="small">
+<b>RPDI</b> shown here is the combined traffic for both available directions of each counting section. The source directional records are grouped by road + <b>cisloSU</b> and their <b>s/t/o/m</b> values are summed. For Monday–Sunday the dashboard calculates an <b>estimated weekday intensity</b> by multiplying non-truck and truck RPDI separately by SSC weekly-variation factors. These weekday values are therefore modelled, not direct daily observations for every road section.<br><br>
+The 2022/2023 census covered all class I and II roads but only <b>part of class III</b>. Sections explicitly identified by the source as 2023 measurements are excluded where a year/note field permits that identification.<br><br>
+Weekday coefficients in this viewer are digitised approximations from the SSC 2020 weekly-variation charts presented by Dolinayová (2023); therefore use weekday values as comparative estimates rather than engineering-design inputs.
+</div>
+</div>
+</aside>
+<div style="position:relative"><div id="map"></div><div class="legend"><b>Selected traffic intensity</b><div class="bar"></div><div><span id="legMin">low</span><span style="float:right" id="legMax">high</span></div></div></div>
+</div>
+
+<script>
+const ZIP_URL='./shp_su_intenzity.zip';
+
+// Approximate % of weekly mean, digitised from SSC 2020 charts (Dolinayová 2023).
+const pass = {
+ I:[1.00,.97,1.00,1.04,1.15,.90,.89],
+ H:[1.05,1.02,1.03,1.06,1.15,.88,.79],
+ Z:[1.00,.96,.99,1.02,1.18,.98,.88],
+ R:[.89,.88,.89,.93,1.10,1.18,1.13]
+};
+const truck = {
+ I:[1.19,1.20,1.23,1.20,1.26,.55,.38],
+ H:[1.18,1.22,1.27,1.21,1.28,.51,.34],
+ Z:[1.17,1.19,1.21,1.24,1.31,.56,.32],
+ R:[1.19,1.16,1.19,1.14,1.23,.65,.43]
+};
+const dayIndex={Mon:0,Tue:1,Wed:2,Thu:3,Fri:4,Sat:5,Sun:6};
+
+const map=L.map('map',{preferCanvas:true}).setView([48.72,19.55],8);
+map.getContainer().style.background='#eef2f5';
+
+let baseLayer=null;
+try{
+  baseLayer=L.tileLayer(
+    'https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}',
+    {maxZoom:18, attribution:'Tiles &copy; Esri'}
+  ).addTo(map);
+  baseLayer.on('tileerror',()=>{
+    if(baseLayer && map.hasLayer(baseLayer)) map.removeLayer(baseLayer);
+    baseLayer=null;
+    const st=document.getElementById('status');
+    if(st && !st.dataset.tilewarned){
+      st.dataset.tilewarned='1';
+      st.innerHTML += '<br><b>Basemap tiles could not be loaded.</b> The traffic layer will still display on a plain background.';
+      st.className='status warn';
+    }
+  });
+}catch(e){
+  baseLayer=null;
+}
+let rawFeatures=[], mapFeatures=[], layer=null, haloLayer=null, meta={};
+const trafficRenderer=L.canvas({padding:0.5});
+const haloRenderer=L.canvas({padding:0.5});
+
+function setStatus(msg,kind=''){const el=document.getElementById('status');el.className='status '+kind;el.innerHTML=msg}
+function norm(s){return String(s??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase()}
+function numeric(v){if(v===null||v===undefined)return NaN; if(typeof v==='number')return v; return Number(String(v).replace(/\s/g,'').replace(',','.'))}
+function getKeys(features){const s=new Set();features.slice(0,300).forEach(f=>Object.keys(f.properties||{}).forEach(k=>s.add(k)));return [...s]}
+
+function scoreKey(keys, exacts, patterns){
+  for(const e of exacts){const k=keys.find(x=>norm(x)===norm(e));if(k)return k}
+  for(const p of patterns){const k=keys.find(x=>p.test(norm(x)));if(k)return k}
+  return null
+}
+
+function inferMeta(features){
+ const keys=getKeys(features);
+
+ const total=scoreKey(keys,['s','S','SPOLU','SUMA','RPDI_S'],[/rpdi.*s/,/sucet/,/spolu/,/suma/,/celk/]);
+ const trucks=scoreKey(keys,['t','T','NA','RPDI_T'],[/rpdi.*t/,/naklad/,/truck/,/^t_/]);
+ const cars=scoreKey(keys,['o','O','OA','RPDI_O'],[/osob/,/rpdi.*o/]);
+ const moto=scoreKey(keys,['m','M','RPDI_M'],[/moto/,/rpdi.*m/]);
+
+ const road=scoreKey(keys,['cisloPK','CISLOPK','CESTA','Cesta','ROAD'],[/cislopk/,/cesta/,/road/,/komunik/]);
+ const roadClassField=scoreKey(keys,['triedaPAK','TRIEDAPAK','triedaPK','TRIEDAPK'],[/trieda.*pak/,/trieda.*pk/,/road.*class/]);
+ const section=scoreKey(keys,['cisloSU','CISLOSU','USEK','ÚSEK','C_USEKU','SCIT_USEK'],[/cislosu/,/usek/,/scit/]);
+ const district=scoreKey(keys,['Okres','OKRES'],[/okres/,/district/]);
+ const region=scoreKey(keys,['Kraj','KRAJ'],[/kraj/,/region/]);
+ const direction=scoreKey(keys,['smerPK','SMERPK','SMER'],[/smerpk/,/^smer$/, /direction/]);
+
+ const year=scoreKey(keys,['ROK','YEAR'],[/^rok$/, /year/,/rok_mer/]);
+ const note=scoreKey(keys,['POZN','POZNAMKA','Pozn'],[/pozn/,/note/,/meran/,/datum/]);
+ return {keys,total,trucks,cars,moto,road,roadClassField,section,district,region,direction,year,note};
+}
+
+function roadClass(p){
+ if(meta.roadClassField){
+   let c=String(p[meta.roadClassField]??'').trim().toUpperCase()
+     .normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,'');
+   // Important: test longest Roman numeral first.
+   if(c==='3' || c==='III' || c.startsWith('III.') || c.startsWith('III-')) return 'III';
+   if(c==='2' || c==='II' || c.startsWith('II.') || c.startsWith('II-')) return 'II';
+   if(c==='1' || c==='I' || c.startsWith('I.') || c.startsWith('I-')) return 'I';
+ }
+ const v=String(p[meta.road]??'').trim().toUpperCase().replace(/\s+/g,'');
+ if(/^III[\/\-]/.test(v))return 'III';
+ if(/^II[\/\-]/.test(v))return 'II';
+ if(/^I[\/\-]/.test(v))return 'I';
+
+ const n=parseInt(v.replace(/\D/g,''),10);
+ if(Number.isFinite(n)){
+   if(n<100)return 'I';
+   if(n<1000)return 'II';
+   return 'III';
+ }
+ return null;
+}
+
+function is2022(p){
+ if(meta.year){
+   const y=String(p[meta.year]??'').match(/20\d{2}/);
+   if(y)return y[0]==='2022';
+ }
+ if(meta.note){
+   const s=norm(p[meta.note]);
+   if(s.includes('2023'))return false;
+   if(s.includes('2022'))return true;
+ }
+ // If the layer has no usable year marker, retain it and disclose that filtering is not verifiable.
+ return true;
+}
+
+function val(f){
+ const p=f.properties||{};
+ const S=numeric(p[meta.total]);
+ const T=numeric(p[meta.trucks]);
+ const O=numeric(p[meta.cars]);
+ const M=numeric(p[meta.moto]);
+ let total=Number.isFinite(S)?S:([T,O,M].filter(Number.isFinite).reduce((a,b)=>a+b,0));
+ let t=Number.isFinite(T)?T:0;
+ let non=Math.max(0,total-t);
+ const day=document.getElementById('weekday').value;
+ const includeT=document.getElementById('includeTrucks').checked;
+ if(day==='RPDI') return Math.max(0,non+(includeT?t:0));
+ let prof=roadClass(p)==='I'?'I':document.getElementById('profile').value;
+ const i=dayIndex[day];
+ const pf=prof==='AVG'?(pass.H[i]+pass.Z[i]+pass.R[i])/3:pass[prof][i];
+ const tf=prof==='AVG'?(truck.H[i]+truck.Z[i]+truck.R[i])/3:truck[prof][i];
+ return Math.max(0, non*pf + (includeT?t*tf:0));
+}
+
+function color(t){
+ // blue -> cyan -> yellow -> orange -> red, t 0..1
+ const stops=[[44,123,182],[171,217,233],[255,255,191],[253,174,97],[215,25,28]];
+ const x=Math.max(0,Math.min(.999,t))*(stops.length-1), i=Math.floor(x), a=x-i;
+ const c=stops[i].map((v,j)=>Math.round(v*(1-a)+stops[i+1][j]*a));
+ return `rgb(${c.join(',')})`;
+}
+
+function aggregateDirections(features){
+ // SSC publishes separate records for road directions. For the visualization,
+ // group them into one counting section and sum all intensity components.
+ // Geometry from the first record is retained for drawing the section once.
+ if(!meta.section) return features.slice();
+
+ const groups=new Map();
+ for(const f of features){
+   const p=f.properties||{};
+   const road=String(p[meta.road]??'');
+   const section=String(p[meta.section]??'');
+   const key=road+'|'+section;
+
+   if(!groups.has(key)){
+     const clone={
+       type:'Feature',
+       geometry:f.geometry,
+       properties:{...p}
+     };
+     clone.properties.__directionCount=1;
+     clone.properties.__directions=meta.direction ? [String(p[meta.direction]??'')] : [];
+     // Normalize the intensity fields to numeric values.
+     for(const k of [meta.total,meta.trucks,meta.cars,meta.moto]){
+       if(k) clone.properties[k]=Number.isFinite(numeric(p[k])) ? numeric(p[k]) : 0;
+     }
+     groups.set(key,clone);
+   }else{
+     const g=groups.get(key);
+     g.properties.__directionCount=(g.properties.__directionCount||1)+1;
+     if(meta.direction){
+       const d=String(p[meta.direction]??'');
+       if(d && !g.properties.__directions.includes(d)) g.properties.__directions.push(d);
+     }
+     for(const k of [meta.total,meta.trucks,meta.cars,meta.moto]){
+       if(k){
+         const add=numeric(p[k]);
+         if(Number.isFinite(add)) g.properties[k]=(numeric(g.properties[k])||0)+add;
+       }
+     }
+   }
+ }
+ return [...groups.values()];
+}
+
+function selectedFeatures(){
+ const classes=[...document.querySelectorAll('.roadClass:checked')].map(x=>x.value);
+ return mapFeatures.filter(f=>classes.includes(roadClass(f.properties||{})) && is2022(f.properties||{}));
+}
+
+function render(){
+ if(!rawFeatures.length)return;
+ if(layer)layer.remove();
+ if(haloLayer)haloLayer.remove();
+ const fs=selectedFeatures(), values=fs.map(val).filter(Number.isFinite);
+ const positive=values.filter(x=>x>0);
+ const min=positive.length?Math.min(...positive):0, max=positive.length?Math.max(...positive):1;
+ const logmin=Math.log1p(min), logmax=Math.log1p(max);
+ const fc={type:'FeatureCollection',features:fs};
+
+ haloLayer=L.geoJSON(fc,{
+   renderer: haloRenderer,
+   interactive:false,
+   style:f=>{
+     const v=val(f), t=(Math.log1p(v)-logmin)/Math.max(.0001,logmax-logmin);
+     return {color:'#ffffff',weight:5+5*Math.max(0,Math.min(1,t)),opacity:.82,lineCap:'round',lineJoin:'round'};
+   }
+ }).addTo(map);
+
+ layer=L.geoJSON(fc,{
+   renderer: trafficRenderer,
+   style:f=>{
+     const v=val(f), t=(Math.log1p(v)-logmin)/Math.max(.0001,logmax-logmin);
+     return {color:color(t),weight:2.5+4.5*Math.max(0,Math.min(1,t)),opacity:.95,lineCap:'round',lineJoin:'round'};
+   },
+   onEachFeature:(f,l)=>{
+     const p=f.properties||{}, S=numeric(p[meta.total]), T=numeric(p[meta.trucks]);
+     const selected=val(f), cls=roadClass(p);
+     const day=document.getElementById('weekday').value;
+     const dayLabel=day==='RPDI'?'RPDI':'Estimated '+document.getElementById('weekday').selectedOptions[0].text;
+     l.bindTooltip(`<b>${meta.road?String(p[meta.road]??'Road'):'Road'}${cls?' · class '+cls:''}</b><br>
+       ${meta.section?'Section: '+String(p[meta.section]??'—')+'<br>':''}
+       ${meta.region?'Region: '+String(p[meta.region]??'—')+'<br>':''}${meta.district?'District: '+String(p[meta.district]??'—')+'<br>':''}
+       RPDI total (both directions): ${Number.isFinite(S)?Math.round(S).toLocaleString():'—'} veh/day<br>
+       Trucks RPDI: ${Number.isFinite(T)?Math.round(T).toLocaleString():'—'}${Number.isFinite(S)&&S>0&&Number.isFinite(T)?' ('+(100*T/S).toFixed(1)+'%)':''}<br>
+       ${p.__directionCount?'Directions combined: '+p.__directionCount+(p.__directions?.length?' ('+p.__directions.join(', ')+')':'')+'<br>':''}
+       <b>${dayLabel}: ${Math.round(selected).toLocaleString()} veh/day</b>`);
+   }
+ }).addTo(map);
+
+ if(fs.length && layer.getBounds().isValid()) map.fitBounds(layer.getBounds(),{padding:[15,15]});
+ document.getElementById('nSections').textContent=fs.length.toLocaleString();
+ document.getElementById('avgTraffic').textContent=values.length?Math.round(values.reduce((a,b)=>a+b,0)/values.length).toLocaleString():'—';
+ document.getElementById('maxTraffic').textContent=values.length?Math.round(Math.max(...values)).toLocaleString():'—';
+ let sumS=0,sumT=0;fs.forEach(f=>{const p=f.properties||{},s=numeric(p[meta.total]),t=numeric(p[meta.trucks]);if(Number.isFinite(s))sumS+=s;if(Number.isFinite(t))sumT+=t});
+ document.getElementById('truckShare').textContent=sumS?((100*sumT/sumS).toFixed(1)+'%'):'—';
+ document.getElementById('legMin').textContent=Math.round(min).toLocaleString();
+ document.getElementById('legMax').textContent=Math.round(max).toLocaleString()+' veh/day';
+}
+
+async function consume(input){
+ setStatus('Parsing shapefile…');
+ let gj=await shp(input);
+ let collections=[];
+ if(Array.isArray(gj))collections=gj; else if(gj?.type==='FeatureCollection')collections=[gj];
+ // Retain line geometries; if none are lines, retain all.
+ let lineFC=collections.filter(fc=>fc.features?.some(f=>/LineString/.test(f.geometry?.type||'')));
+ if(!lineFC.length)lineFC=collections;
+ rawFeatures=lineFC.flatMap(fc=>fc.features||[]).filter(f=>f.geometry);
+ meta=inferMeta(rawFeatures);
+
+ if(!meta.road || !meta.total || !meta.trucks){
+   const keyList=meta.keys.join(', ');
+   setStatus('The ZIP loaded, but the expected road/intensity fields could not be identified automatically.<br><b>Detected fields:</b> '+keyList,'err');
+   return;
+ }
+ mapFeatures=aggregateDirections(rawFeatures);
+ const rc=mapFeatures.reduce((a,f)=>{const c=roadClass(f.properties||{});if(c)a[c]=(a[c]||0)+1;return a},{});
+ const yearMsg=meta.year||meta.note
+   ? '2023-marked records will be excluded using <b>'+(meta.year||meta.note)+'</b>.'
+   : '<b>No explicit year/note field was detected</b>; all class I–III records will remain visible because source-year filtering cannot be verified from the attributes.';
+ setStatus(`Loaded <b>${rawFeatures.length.toLocaleString()}</b> source records and aggregated them to <b>${mapFeatures.length.toLocaleString()}</b> counting sections${meta.direction?' using '+meta.direction:''}. Detected fields: road=<b>${meta.road}</b>, class=<b>${meta.roadClassField||'derived'}</b>, total=<b>${meta.total}</b>, trucks=<b>${meta.trucks}</b>. Classes after aggregation: I=<b>${(rc.I||0).toLocaleString()}</b>, II=<b>${(rc.II||0).toLocaleString()}</b>, III=<b>${(rc.III||0).toLocaleString()}</b>. ${yearMsg}`,'ok');
+ render();
+ if(layer && layer.getBounds && layer.getBounds().isValid()){
+   const b=layer.getBounds();
+   const sw=b.getSouthWest(), ne=b.getNorthEast();
+   const sane = sw.lng>=10 && ne.lng<=30 && sw.lat>=40 && ne.lat<=55;
+   const st=document.getElementById('status');
+   st.innerHTML += `<br>Geometry bounds: <b>${sw.lat.toFixed(2)}, ${sw.lng.toFixed(2)}</b> → <b>${ne.lat.toFixed(2)}, ${ne.lng.toFixed(2)}</b>${sane?' ✓':' ⚠ unexpected projection'}`;
+   if(!sane) st.className='status warn';
+ }
+}
+
+
+document.querySelectorAll('.roadClass,#weekday,#includeTrucks,#profile').forEach(x=>x.addEventListener('change',render));
+</script>
+</body>
+</html>
