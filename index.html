@@ -82,6 +82,7 @@ const huFactors={};for(const [k,a] of Object.entries(huRawFactors)){const m=a.re
 const skPass={I:[1.00,.97,1.00,1.04,1.15,.90,.89],H:[1.05,1.02,1.03,1.06,1.15,.88,.79],Z:[1.00,.96,.99,1.02,1.18,.98,.88],R:[.89,.88,.89,.93,1.10,1.18,1.13]};
 const skTruck={I:[1.19,1.20,1.23,1.20,1.26,.55,.38],H:[1.18,1.22,1.27,1.21,1.28,.51,.34],Z:[1.17,1.19,1.21,1.24,1.31,.56,.32],R:[1.19,1.16,1.19,1.14,1.23,.65,.43]};
 const isMob=()=>matchMedia('(max-width:768px)').matches;
+const useHoverTooltip=()=>!isMob() && matchMedia('(hover:hover) and (pointer:fine)').matches;
 const map=L.map('map',{preferCanvas:true}).setView([47.9,19.1],7);
 L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}',{maxZoom:18,attribution:'Tiles © Esri | Traffic: SSC + Magyar Közút'}).addTo(map);
 let skRaw=[],skFeatures=[],skMeta={},allFeatures=[],layer,halo,hit;const rend=L.canvas({padding:.5});
