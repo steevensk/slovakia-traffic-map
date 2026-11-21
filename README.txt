@@ -1,12 +1,14 @@
-MOBILE-SAFE PRODUCTION BUILD — Slovakia + Hungary traffic map
+Mobile-safe production fix v2
 
-Upload these three files to the root of the GitHub Pages repository:
-  index.html
-  slovakia_traffic_2022_2023.geojson
-  hungary_traffic_2024.geojson
+Upload these three files to the repository root, replacing the existing versions:
+- index.html
+- slovakia_traffic_2022_2023.geojson
+- hungary_traffic_2024.geojson
 
-This version keeps both national datasets external to index.html. The map UI can render immediately on phones, then loads the two GeoJSON files asynchronously.
+Changes:
+- mobile stats sheet is fully hidden until a road is tapped
+- Leaflet JavaScript uses fallback hosts instead of failing on one CDN
+- critical Leaflet layout CSS is embedded in index.html
+- a visible error message is shown if all map-library hosts are blocked
 
-The previous shp_su_intenzity.zip is not required.
-
-After upload, reload the GitHub Pages URL. If the phone has cached the previous version, use a private/incognito tab once or clear the site cache.
+After uploading, test once in a private/incognito tab to bypass cached index.html.
