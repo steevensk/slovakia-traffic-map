@@ -1,18 +1,17 @@
-Traffic map v7 — mobile improvements
+Slovakia + Hungary traffic map — production GitHub deployment
 
-Changes:
-- responsive mobile map height using 100dvh
-- smaller mobile header / legend
-- larger Leaflet zoom controls on mobile
-- invisible ~20 px touch targets around road sections
-- mobile bottom-sheet statistics panel
-- desktop tooltip behavior retained
-- tap map background or X to close mobile stats
+Upload / replace:
+  index.html
 
-Deployment:
-Replace index.html in your GitHub repository root.
-Keep shp_su_intenzity.zip unchanged in the same folder.
-Then hard-refresh the GitHub Pages site.
+Keep in the same repository root:
+  shp_su_intenzity.zip
 
-GitHub Pages:
-https://steevensk.github.io/slovakia-traffic-map/
+The Hungary 2024 traffic data is embedded directly inside index.html, so no separate Hungary data file is required.
+
+Expected GitHub Pages layout:
+  /index.html
+  /shp_su_intenzity.zip
+
+If your current GitHub Pages site already contains shp_su_intenzity.zip, do not delete or replace it unless you intentionally want to update the Slovakia source data.
+
+The existing Blogger iframe URL can remain unchanged if the GitHub Pages repository/URL stays the same.
