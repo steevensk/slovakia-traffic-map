@@ -1,14 +1,8 @@
-Mobile-safe production fix v2
+Mobile layout fix v3
 
-Upload these three files to the repository root, replacing the existing versions:
+Upload these three files to the GitHub repository root, replacing the existing versions:
 - index.html
 - slovakia_traffic_2022_2023.geojson
 - hungary_traffic_2024.geojson
 
-Changes:
-- mobile stats sheet is fully hidden until a road is tapped
-- Leaflet JavaScript uses fallback hosts instead of failing on one CDN
-- critical Leaflet layout CSS is embedded in index.html
-- a visible error message is shown if all map-library hosts are blocked
-
-After uploading, test once in a private/incognito tab to bypass cached index.html.
+Fix: on screens <=768px the map wrapper now explicitly fills the viewport. The previous mobile CSS changed the app from grid to block layout, causing the relatively positioned map wrapper to collapse to zero height because the map itself was absolutely positioned.
