@@ -24,10 +24,13 @@ aside.open{transform:translate3d(0,0,0)}
 .sheet{display:none;visibility:hidden;position:fixed!important;z-index:4800;left:50%;right:auto;top:auto;bottom:calc(8px + env(safe-area-inset-bottom));transform:translate3d(-50%,calc(100% + 30px),0);width:min(94vw,430px);max-height:min(58vh,520px);overflow:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;background:#fff;border:1px solid #cfd8e3;border-radius:14px;box-shadow:0 6px 24px #0004;padding:13px 38px 13px 13px;transition:transform .18s;pointer-events:none}.sheet.open{display:block;visibility:visible;transform:translate3d(-50%,0,0);pointer-events:auto}.close{position:absolute;right:9px;top:7px;border:0;background:transparent;font-size:25px;touch-action:manipulation}.week-bars{height:115px}.wv,.wl{font-size:10px}.leaflet-control-zoom a{width:38px!important;height:38px!important;line-height:38px!important;font-size:22px!important}.leaflet-tooltip{width:auto;max-width:94vw;display:none!important}}
 @media(hover:none),(pointer:coarse){.leaflet-tooltip{display:none!important}}
 
+.search-row{display:grid;grid-template-columns:1fr auto;gap:6px;align-items:center}.search-row input{width:100%;padding:8px;border:1px solid #cbd5df;border-radius:7px;background:#fff;font:inherit}.search-row button{width:auto;min-width:72px;padding:8px 12px}.search-results{margin-top:7px;display:flex;flex-direction:column;gap:5px}.search-result{width:100%;text-align:left;background:#f7f9fb;color:#17202a;border:1px solid #d9e0e7;border-radius:7px;padding:7px 8px;font-weight:500;line-height:1.25}.search-result:hover{background:#eef3f8}.search-result small{display:block;color:#637083;font-size:10px;margin-top:2px}.search-msg{font-size:11px;color:#637083;line-height:1.35;margin-top:6px}.search-clear{margin-top:6px;background:#eef3f8!important;color:#213547!important;border:1px solid #cbd5df!important}.search-loading{font-size:11px;color:#637083;margin-top:6px}
+
 </style></head><body>
 <header><div><h1>Slovakia + Hungary road traffic</h1><div class="sub">Cyclist-oriented traffic view · Slovakia CSD 2022/2023 + Hungary 2024 · weekday views are modelled</div></div><button id="menu" class="menu">Filters</button></header>
 <div class="app"><aside id="side">
 <div class="card"><div id="status" class="status"><b>Hungary:</b> loading 2024 data…<br><b>Slovakia:</b> loading optimized CSD 2022/2023 data…</div></div>
+<div class="card"><h2>Find road or town</h2><div class="search-row"><input id="mapSearch" type="search" placeholder="e.g. I/63, 63, Bratislava, Győr" autocomplete="off" enterkeyhint="search"><button id="searchBtn" type="button">Search</button></div><div id="searchResults" class="search-results"></div><div id="searchMsg" class="search-msg">Road numbers are searched locally. Town names use OpenStreetMap place search.</div></div>
 <div class="card"><h2>Filters</h2>
 <label>Country</label><div class="checks"><label><input class="country" type="checkbox" value="SK" checked> Slovakia</label><label><input class="country" type="checkbox" value="HU" checked> Hungary</label></div>
 <label>Road category</label><div class="checks" id="cats"><label><input class="cat" type="checkbox" value="ME"> Motorway / expressway</label><label><input class="cat" type="checkbox" value="I" checked> Primary road · Class I</label><label><input class="cat" type="checkbox" value="II" checked> Secondary road · Class II</label><label><input class="cat" type="checkbox" value="III" checked> Minor road · Class III</label></div>
@@ -36,7 +39,7 @@ aside.open{transform:translate3d(0,0,0)}
 <label>Show roads up to</label><select id="maxTraffic"><option value="Infinity">All traffic levels</option><option value="20000">20,000 veh/day</option><option value="10000">10,000 veh/day</option><option value="5000">5,000 veh/day</option><option value="3000">3,000 veh/day</option><option value="2000">2,000 veh/day</option><option value="1000">1,000 veh/day</option></select><div class="filter-help">Uses official annual-average motor traffic before the truck-risk adjustment.</div>
 <div id="skProfileWrap"><label>Slovakia Class II/III weekday profile</label><select id="skProfile"><option value="AVG">Average of H / Z / R</option><option value="H">H</option><option value="Z">Z</option><option value="R">R</option></select><div class="filter-help">Only affects Slovakia weekday estimates; Class I uses its own SSC profile.</div></div>
 </div>
-<div class="card"><h2>Visible-data summary</h2><div class="statgrid"><div class="stat"><b id="n">—</b><span>sections</span></div><div class="stat"><b id="avg">—</b><span>avg veh/day</span></div><div class="stat"><b id="max">—</b><span>max veh/day</span></div><div class="stat"><b id="share">—</b><span>truck share</span></div></div></div>
+<div class="card"><h2>Visible-data summary</h2><div class="statgrid"><div class="stat"><b id="n">—</b><span>sections</span></div><div class="stat"><b id="avg">—</b><span>avg veh/day</span></div><div class="stat"><b id="max">—</b><span>max veh/day</span></div><div class="stat"><b id="share">—</b><span>heavy-vehicle share</span></div></div></div>
 <div class="card"><h2>Methodology</h2><div class="small"><b>Direction basis:</b> all traffic values shown on the map represent the total across both road directions combined. Weekday estimates keep the same two-way basis.<br><br><b>Colours:</b> fixed cyclist-oriented annual-average traffic bands are identical in both countries. Optional heavy-vehicle adjustment is driven mainly by absolute heavy-vehicle exposure: fewer than 250 heavy vehicles/day adds no band, 250–999 heavy vehicles/day adds one band, and 1,000+ heavy vehicles/day adds two bands. A heavy-vehicle share of 30% or more adds one further band only when the road already carries at least 250 heavy vehicles/day. The total adjustment is capped at three bands.<br><br><b>Slovakia:</b> official SSC CSD 2022/2023 sections, pre-aggregated for faster loading. The SSC T category used for heavy vehicles combines goods/commercial motor vehicles and buses. Direction records are combined by road + counting section before publication; geometry is lightly simplified for web display. Weekday estimates use SSC weekly-variation factors; Class II/III profile can be selected above.<br><br><b>Hungary:</b> Magyar Közút 2024 annual-average traffic joined to TeraLite geometry. Heavy vehicles combine buses and truck classes (official heavy-motor total). Weekday values are comparative estimates from the section traffic-character profile. Source type, last count year and accuracy remain available in the technical footer.</div></div>
 </aside><div class="map-wrap"><div id="map"></div><div id="sheet" class="sheet"><button id="close" class="close">×</button><div id="sheetc"></div></div><div class="legend"><b>Traffic level assessment</b><div class="bar"></div><div class="legend-scale"><span>0–500<br>very quiet</span><span>501–2k<br>quiet/mod.</span><span>2–5k<br>noticeable/busy</span><span>5k+<br>heavy+</span></div><div class="truck-key">Heavy-vehicle adjustment: <b>&lt;250/day</b> none · <b>250–999</b> +1 · <b>1,000+</b> +2 · <b>30%+ share</b> may add +1</div></div></div></div>
 <script>
@@ -84,6 +87,7 @@ const skTruck={I:[1.19,1.20,1.23,1.20,1.26,.55,.38],H:[1.18,1.22,1.27,1.21,1.28,
 const isMob=()=>matchMedia('(max-width:768px)').matches;
 const useHoverTooltip=()=>!isMob() && matchMedia('(hover:hover) and (pointer:fine)').matches;
 const map=L.map('map',{preferCanvas:true}).setView([47.9,19.1],7);
+let searchMarker=null;
 L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}',{maxZoom:18,attribution:'Tiles © Esri | Traffic: SSC + Magyar Közút'}).addTo(map);
 let skRaw=[],skFeatures=[],skMeta={},allFeatures=[],layer,halo,hit;const rend=L.canvas({padding:.5});
 function num(v){if(v===null||v===undefined)return 0;if(typeof v==='number')return v;const n=Number(String(v).replace(/\s/g,'').replace(',','.'));return Number.isFinite(n)?n:0}
@@ -117,6 +121,56 @@ function sourceLabel(p){const m={'mért':'Measured','felszorzott':'Scaled','kép
 function week(f){const vals=days.map(d=>comps(f,d)),mx=Math.max(...vals.map(x=>x.total),1),sel=document.getElementById('day').value;return`<div class="week"><div class="week-head"><span>Modelled traffic by weekday</span><span class="truck-legend-text">incl. heavy vehicles</span></div><div class="week-bars">${vals.map((c,i)=>{const h=Math.max(4,Math.round(c.total/mx*72)),th=Math.max(c.truck>0?1:0,Math.round(h*(c.total?c.truck/c.total:0))),nh=Math.max(0,h-th);return`<div class="witem"><div class="wv">${compact(c.total)}</div><div class="wb${sel===days[i]?' sel':''}" style="height:${h}px"><div class="wb-nontruck" style="height:${nh}px"></div><div class="wb-truck" style="height:${th}px"></div></div><div class="wl">${days[i]}</div></div>`}).join('')}</div><div class="note">Warm red shows heavy vehicles within each total. Weekday values are comparative two-way estimates.</div></div>`}
 function km(m){return(num(m)/1000).toFixed(3)}
 function popup(f){const p=f.properties||{},d=document.getElementById('day'),day=d.value,name=day==='AVG'?'Annual average':d.selectedOptions[0].text+' estimate',c=comps(f,day),tp=c.total?100*c.truck/c.total:0,cb=cycleBand(f),cty=country(f);let title,meta=[];if(cty==='SK'){title=`${String(p[skMeta.road]??'Road')} · ${catLabels[stdCat(f)]}`;if(skMeta.region&&p[skMeta.region])meta.push(String(p[skMeta.region]));if(skMeta.district&&p[skMeta.district])meta.push(String(p[skMeta.district]));if(skMeta.section)meta.push(`section ${String(p[skMeta.section]??'—')}`);meta.push('SSC CSD 2022/2023')}else{title=`${p.road_display||p.road||'Road'} · ${catLabels[stdCat(f)]}`;const conf=sourceConfidence(p);meta.push(conf);if(p.county_display||p.county)meta.push(p.county_display||p.county);meta.push(`section ${km(p.start_chainage_m)}–${km(p.end_chainage_m)} km`);meta.push(`station ${p.station}`);meta.push(`profile ${p.profile||'—'}`);meta.push(sourceLabel(p));if(p.last_count_year)meta.push(`last count ${p.last_count_year}`);if(p.accuracy_pct!=null)meta.push(`accuracy ±${p.accuracy_pct}%`)}return`<div class="popup-title">${title}</div><div class="popup-assessment">Traffic: ${cb.label} <span class="comfort-badge">· ${comfort[cycleBandIndex(f)]}</span></div><div class="popup-primary">${day==='AVG'?'Annual daily average':name}: ${Math.round(c.total).toLocaleString()} vehicles, of which ${tp.toFixed(1)}% are heavy vehicles (trucks, lorries, buses, etc.)</div><div class="note">Both road directions combined</div>${truckBadge(f)}<div class="why"><b>Why?</b> ${whyRating(f)}</div>${week(f)}<div class="popup-meta">${meta.join(' · ')}</div>`}
+function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function roadName(f){const p=f.properties||{};return country(f)==='SK'?String(p[skMeta.road]??''):String(p.road_display||p.road||'')}
+function roadKey(s){return norm(s).replace(/\b(road|route|cesta|ut|út)\b/g,'').replace(/[.\s_-]+/g,'').replace(/^([ivx]+)\//,'$1').trim()}
+function roadSearchGroups(q){
+  const k=roadKey(q); if(!k)return[];
+  const by=new Map();
+  for(const f of allFeatures){
+    const n=roadName(f); if(!n)continue;
+    const nk=roadKey(n);
+    const digits=String(n).match(/\d+[a-z]?/i)?.[0]?.toLowerCase()||'';
+    const qdigits=String(q).match(/\d+[a-z]?/i)?.[0]?.toLowerCase()||'';
+    const exact=nk===k || (qdigits && digits===qdigits && (k===qdigits || nk.endsWith(qdigits)));
+    if(!exact)continue;
+    const id=country(f)+'|'+n;
+    if(!by.has(id))by.set(id,{country:country(f),name:n,features:[]});
+    by.get(id).features.push(f);
+  }
+  return [...by.values()].sort((a,b)=>a.country.localeCompare(b.country)||a.name.localeCompare(b.name));
+}
+function boundsForFeatures(fs){
+  const g=L.geoJSON({type:'FeatureCollection',features:fs},{interactive:false});
+  const b=g.getBounds(); return b&&b.isValid()?b:null;
+}
+function clearSearchMarker(){if(searchMarker){map.removeLayer(searchMarker);searchMarker=null}}
+function closeMobilePanelsAfterSearch(){if(isMob())document.getElementById('side').classList.remove('open');const sh=document.getElementById('sheet');sh.classList.remove('open');sh.style.display='';sh.style.visibility=''}
+function showRoadResults(groups,q){
+  const box=document.getElementById('searchResults'),msg=document.getElementById('searchMsg');box.innerHTML='';
+  if(!groups.length)return false;
+  groups.slice(0,12).forEach(g=>{const b=document.createElement('button');b.type='button';b.className='search-result';b.innerHTML=`${esc(g.country==='SK'?'Slovakia':'Hungary')} · ${esc(g.name)}<small>${g.features.length.toLocaleString()} traffic section${g.features.length===1?'':'s'}</small>`;b.onclick=()=>{clearSearchMarker();const bd=boundsForFeatures(g.features);if(bd)map.fitBounds(bd,{padding:[28,28],maxZoom:13});msg.textContent=`Focused on ${g.country==='SK'?'Slovakia':'Hungary'} road ${g.name}.`;closeMobilePanelsAfterSearch();setTimeout(()=>map.invalidateSize(false),120)};box.appendChild(b)});
+  if(groups.length>12)msg.textContent=`Found ${groups.length} matching roads; showing the first 12.`;else msg.textContent=`Found ${groups.length} matching road${groups.length===1?'':'s'}.`;
+  return true;
+}
+async function townSearch(q){
+  const box=document.getElementById('searchResults'),msg=document.getElementById('searchMsg');box.innerHTML='<div class="search-loading">Searching towns…</div>';msg.textContent='';
+  try{
+    const url='https://nominatim.openstreetmap.org/search?format=jsonv2&limit=6&countrycodes=sk,hu&addressdetails=1&q='+encodeURIComponent(q);
+    const r=await fetch(url,{headers:{'Accept':'application/json'}});if(!r.ok)throw new Error('HTTP '+r.status);
+    const data=await r.json();box.innerHTML='';
+    const places=data.filter(x=>x.lat&&x.lon);
+    if(!places.length){msg.textContent='No matching road or town found in Slovakia or Hungary.';return}
+    places.forEach(x=>{const b=document.createElement('button');b.type='button';b.className='search-result';const a=x.address||{},countryName=a.country_code==='sk'?'Slovakia':a.country_code==='hu'?'Hungary':(a.country||'');const title=x.name||a.city||a.town||a.village||String(x.display_name).split(',')[0];b.innerHTML=`${esc(title)}<small>${esc(countryName)}${a.state?' · '+esc(a.state):''}</small>`;b.onclick=()=>{clearSearchMarker();const lat=Number(x.lat),lon=Number(x.lon);searchMarker=L.marker([lat,lon]).addTo(map);if(x.boundingbox&&x.boundingbox.length===4){const bb=L.latLngBounds([Number(x.boundingbox[0]),Number(x.boundingbox[2])],[Number(x.boundingbox[1]),Number(x.boundingbox[3])]);map.fitBounds(bb,{padding:[32,32],maxZoom:14})}else map.setView([lat,lon],13);msg.textContent=`Focused on ${title}.`;closeMobilePanelsAfterSearch();setTimeout(()=>map.invalidateSize(false),120)};box.appendChild(b)});
+    msg.textContent=`Found ${places.length} place result${places.length===1?'':'s'}.`;
+  }catch(e){box.innerHTML='';msg.textContent='Town search is temporarily unavailable. Road-number search still works locally.'}
+}
+async function runMapSearch(){
+  const input=document.getElementById('mapSearch'),q=input.value.trim(),box=document.getElementById('searchResults'),msg=document.getElementById('searchMsg');
+  if(!q){box.innerHTML='';msg.textContent='Enter a road number or town name.';return}
+  const roads=roadSearchGroups(q);if(showRoadResults(roads,q))return;
+  await townSearch(q);
+}
 function selected(){const countries=[...document.querySelectorAll('.country:checked')].map(x=>x.value),cats=[...document.querySelectorAll('.cat:checked')].map(x=>x.value),mx=Number(document.getElementById('maxTraffic').value||Infinity);return allFeatures.filter(f=>countries.includes(country(f))&&cats.includes(stdCat(f))&&rawTraffic(f)<=mx)}
 function openRoadSheet(f,e){
   if(e)L.DomEvent.stopPropagation(e);
@@ -168,6 +222,8 @@ async function loadTrafficData(){
   refreshAll(true);
   setTimeout(()=>map.invalidateSize(true),100);
 }
+document.getElementById('searchBtn').addEventListener('click',runMapSearch);
+document.getElementById('mapSearch').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();runMapSearch()}});
 document.querySelectorAll('.country,.cat,#day,#truckRisk,#maxTraffic,#skProfile').forEach(x=>x.addEventListener('change',render));
 document.getElementById('menu').onclick=()=>{document.getElementById('side').classList.toggle('open');setTimeout(()=>map.invalidateSize(false),220)};
 document.getElementById('close').onclick=()=>{const s=document.getElementById('sheet');s.classList.remove('open');s.style.display='';s.style.visibility=''};
