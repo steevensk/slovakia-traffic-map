@@ -13,3 +13,10 @@ Truck exposure adjustment:
 - total adjustment capped at +3 bands
 
 This release keeps the mobile interaction/layout fixes from v7 unchanged.
+
+
+v9 changes:
+- Uses a common Heavy vehicles definition for exposure logic.
+- Slovakia: SSC T category (goods/commercial vehicles + buses).
+- Hungary: official aadt_heavy_motor (buses + truck classes), with component-sum fallback.
+- Popup wording changed to plain-language annual/weekday vehicle totals and heavy-vehicle share.
